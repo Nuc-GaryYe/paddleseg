@@ -7,8 +7,8 @@ def creat_data_list(dataset_path, mode='train'):
         A_imgs_name.sort()
         for A_img_name in A_imgs_name:
             A_img = os.path.join(A_path, A_img_name)
-            B_img = os.path.join(A_path.replace('A', 'B'), A_img_name)
-            label_img = os.path.join(A_path.replace('A', 'label'), A_img_name)
+            path1 = os.path.join(A_path.replace('A', 'label'), A_img_name)
+            label_img = path1.replace('jpg', 'png')
             f.write(A_img + ' ' + label_img + '\n')  # 写入list.txt
     print(mode + '_data_list generated')
 
@@ -64,7 +64,7 @@ class ChangeDataset(Dataset):
         return data_list
 
 # 完成三个数据的创建
-transforms = [Resize([512, 512])]
+transforms = [Resize([1024, 1024])]
 train_data = ChangeDataset(dataset_path, 'train', transforms)
 test_data = ChangeDataset(dataset_path, 'test', transforms)
 val_data = ChangeDataset(dataset_path, 'val', transforms)
@@ -77,7 +77,7 @@ from paddleseg.core import train
 # 参数、优化器及损失
 epochs = 10
 batch_size = 2
-iters = epochs * 445 // batch_size
+iters = epochs * 400 // batch_size
 base_lr = 2e-4
 losses = {}
 losses['types'] = [BCELoss()]
@@ -101,3 +101,30 @@ train(
     num_workers=0,
     losses=losses,
     use_vdl=True)
+
+import paddle
+from paddleseg.models import UNetPlusPlus
+import matplotlib.pyplot as plt
+
+model_path = 'output/best_model/model.pdparams'  # 加载得到的最好参数
+model = UNetPlusPlus(in_channels=3, num_classes=2, use_deconv=True)
+para_state_dict = paddle.load(model_path)
+model.set_dict(para_state_dict)
+"""
+import matplotlib.pyplot as plt
+for idx, (img, lab) in enumerate(test_data):  # 从test_data来读取数据
+    if idx == 2:  # 查看第三个
+        m_img = img.reshape((1, 3, 1024, 1024))
+        #m_pre = model(m_img)
+        s_img = img.reshape((3, 1024, 1024)).numpy().transpose(1, 2, 0)
+        lab_img = lab.reshape((1024, 1024)).numpy()
+        print(lab_img.shape)
+        #pre_img = paddle.argmax(m_pre[0], axis=1).reshape((1024, 1024)).numpy()
+        plt.figure(figsize=(10, 10))
+        plt.imshow(s_img.astype('int64'));plt.title('Time 1')
+        plt.show()
+        plt.imshow(lab_img);plt.title('Label')
+        #plt.imshow(pre_img);plt.title('Change Detection')
+        plt.show()
+        break  # 只看一个结果就够了
+"""
